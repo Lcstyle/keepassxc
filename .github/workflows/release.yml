@@ -1,0 +1,141 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-ubuntu:
+    name: Build (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ \
+            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
+            libbotan-2-dev zlib1g-dev libminizip-dev libargon2-dev \
+            libqrencode-dev libreadline-dev libpcsclite-dev asciidoctor
+
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_XC_KEESHARE=ON -DWITH_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Strip and rename binary
+        run: |
+          strip build/src/keepassxc
+          cp build/src/keepassxc keepassxc-ubuntu-24.04-x86_64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: keepassxc-ubuntu-24.04-x86_64
+          path: keepassxc-ubuntu-24.04-x86_64
+
+  build-fedora:
+    name: Build (Fedora 43)
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:43
+
+    steps:
+      - name: Install git
+        run: dnf install -y git
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y \
+            cmake gcc-c++ \
+            qt5-qtbase-devel qt5-qtsvg-devel qt5-qttools-devel \
+            botan2-devel zlib-devel minizip-compat-devel libargon2-devel \
+            qrencode-devel readline-devel pcsc-lite-devel \
+            qt5-qtbase-private-devel rubygem-asciidoctor \
+            qt5-qtx11extras-devel libXi-devel libXtst-devel
+
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_XC_KEESHARE=ON -DWITH_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Strip and rename binary
+        run: |
+          strip build/src/keepassxc
+          cp build/src/keepassxc keepassxc-fedora-43-x86_64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: keepassxc-fedora-43-x86_64
+          path: keepassxc-fedora-43-x86_64
+
+  release:
+    name: Create GitHub Release
+    needs: [build-ubuntu, build-fedora]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mv artifacts/keepassxc-ubuntu-24.04-x86_64/keepassxc-ubuntu-24.04-x86_64 .
+          mv artifacts/keepassxc-fedora-43-x86_64/keepassxc-fedora-43-x86_64 .
+          chmod +x keepassxc-ubuntu-24.04-x86_64 keepassxc-fedora-43-x86_64
+          sha256sum keepassxc-ubuntu-24.04-x86_64 keepassxc-fedora-43-x86_64 > SHA256SUMS.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          files: |
+            keepassxc-ubuntu-24.04-x86_64
+            keepassxc-fedora-43-x86_64
+            SHA256SUMS.txt
+          body: |
+            ## Installation
+
+            > **Note:** These binaries are built from a fork with per-device KeeShare sync patches. They are not official KeePassXC releases. Use at your own risk.
+
+            Download the binary for your platform and replace your existing KeePassXC binary:
+
+            **Ubuntu/Debian:**
+            ```bash
+            sudo cp keepassxc-ubuntu-24.04-x86_64 /usr/local/bin/keepassxc
+            sudo chmod +x /usr/local/bin/keepassxc
+            ```
+
+            **Fedora:**
+            ```bash
+            sudo cp keepassxc-fedora-43-x86_64 /usr/local/bin/keepassxc
+            sudo chmod +x /usr/local/bin/keepassxc
+            sudo restorecon /usr/local/bin/keepassxc
+            ```
+
+            ### SHA256 Checksums
+            See `SHA256SUMS.txt` for verification.
