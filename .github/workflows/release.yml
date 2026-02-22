@@ -27,7 +27,8 @@ jobs:
             libqt5x11extras5-dev \
             libbotan-2-dev zlib1g-dev libminizip-dev libargon2-dev \
             libqrencode-dev libreadline-dev libpcsclite-dev asciidoctor \
-            libxi-dev libxtst-dev libkeyutils-dev
+            libxi-dev libxtst-dev libkeyutils-dev \
+            qtbase5-private-dev
 
       - name: Configure
         run: |
