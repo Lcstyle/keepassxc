@@ -33,7 +33,7 @@ jobs:
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_XC_KEESHARE=ON -DWITH_TESTS=OFF
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_XC_KEESHARE=ON -DWITH_XC_BROWSER=ON -DWITH_TESTS=OFF
 
       - name: Build
         run: cmake --build build --parallel "$(nproc)"
@@ -75,7 +75,7 @@ jobs:
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_XC_KEESHARE=ON -DWITH_TESTS=OFF
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_XC_KEESHARE=ON -DWITH_XC_BROWSER=ON -DWITH_TESTS=OFF
 
       - name: Build
         run: cmake --build build --parallel "$(nproc)"
